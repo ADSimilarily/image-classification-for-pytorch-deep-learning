@@ -10,7 +10,7 @@ from torch import nn
 
 from .constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 from .helpers import build_model_with_cfg
-from icdl.models.layers import SplitAttnConv2d
+from icdl.models.layers import SplitAttnConv2d, ONNX, OnnxAvgPool2d
 from icdl.models.registry import register_model
 from .resnet import ResNet
 
@@ -79,12 +79,19 @@ class ResNestBottleneck(nn.Module):
         self.conv1 = nn.Conv2d(inplanes, group_width, kernel_size=1, bias=False)
         self.bn1 = norm_layer(group_width)
         self.act1 = act_layer(inplace=True)
-        self.avd_first = nn.AvgPool2d(3, avd_stride, padding=1) if avd_stride > 0 and avd_first else None
+        if avd_stride > 0 and avd_first:
+            if ONNX.use_onnx():
+                self.avd_first = OnnxAvgPool2d(group_width, 3, stride, 1)
+            else:
+                self.avd_first = nn.AvgPool2d(3, avd_stride, padding=1)
+        else:
+            self.avd_first = None
+        # self.avd_first = nn.AvgPool2d(3, avd_stride, padding=1) if avd_stride > 0 and avd_first else None
 
         if self.radix >= 1:
             self.conv2 = SplitAttnConv2d(
                 group_width, group_width, kernel_size=3, stride=stride, padding=first_dilation,
-                dilation=first_dilation, groups=cardinality, radix=radix, norm_layer=norm_layer, drop_block=drop_block)
+                dilation=first_dilation, groups=cardinality, radix=radix, act_layer=act_layer, norm_layer=norm_layer, drop_block=drop_block)
             self.bn2 = None  # FIXME revisit, here to satisfy current torchscript fussyness
             self.act2 = None
         else:
@@ -93,7 +100,14 @@ class ResNestBottleneck(nn.Module):
                 dilation=first_dilation, groups=cardinality, bias=False)
             self.bn2 = norm_layer(group_width)
             self.act2 = act_layer(inplace=True)
-        self.avd_last = nn.AvgPool2d(3, avd_stride, padding=1) if avd_stride > 0 and not avd_first else None
+        if avd_stride > 0 and not avd_first:
+            if ONNX.use_onnx():
+                self.avd_last = OnnxAvgPool2d(group_width, 3, avd_stride, 1)
+            else:
+                self.avd_last = nn.AvgPool2d(3, avd_stride, padding=1)
+        else:
+            self.avd_last = None
+        # self.avd_last = nn.AvgPool2d(3, avd_stride, padding=1) if avd_stride > 0 and not avd_first else None
 
         self.conv3 = nn.Conv2d(group_width, planes * 4, kernel_size=1, bias=False)
         self.bn3 = norm_layer(planes*4)

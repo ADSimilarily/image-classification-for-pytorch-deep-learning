@@ -9,6 +9,7 @@ def parse_args():
     args = parser.parse_args()
     return args
 
+
 if __name__ == '__main__':
     args = parse_args()
     assert args.cfg, '必须指定cfg配置选项'
@@ -16,7 +17,7 @@ if __name__ == '__main__':
 
     _cfg.merge_from_file(args.cfg)
     _cfg.MODEL.OPT = args.opt
-    _cfg.MODEL.STRICT = args.opt != "trian"
+    _cfg.MODEL.STRICT = args.opt != "train"
     _cfg.freeze()
 
     build_runner(_cfg, args.opt)

@@ -38,7 +38,7 @@ _C.SOLVER.OPTIMER = "sgd"   # "sdg", "adam"
 _C.SOLVER.START_ITER = 0
 _C.SOLVER.MAX_ITER = 1000   # dataloader 循环完训练集的次数
 
-_C.SOLVER.BASE_LR = 0.001
+_C.SOLVER.BASE_LR = 0.0001
 
 _C.SOLVER.MOMENTUM = 0.9
 _C.SOLVER.WEIGHT_DECAY = 0.0001
@@ -50,8 +50,8 @@ _C.SOLVER.LR_SCHEDULER_NAME = "WarmupMultiStepLR"   # solver/lr_scheduler.py
 _C.SOLVER.GAMMA = 0.1
 _C.SOLVER.STEPS = (100,)
 
-_C.SOLVER.WARMUP_FACTOR = 1.0 / 5
-_C.SOLVER.WARMUP_ITERS = 5
+_C.SOLVER.WARMUP_MULTIPLIER = 10
+_C.SOLVER.WARMUP_ITERS = 1000
 _C.SOLVER.WARMUP_METHOD = "linear"
 
 
@@ -69,6 +69,9 @@ _C.TRAIN.INPUT_BATCH = 64          #dataloader的batch_size, 当使用分布式�
 _C.TRAIN.NUM_WORKERS = 4
 
 _C.TRAIN.TRANSFORM = "DefaultTransform"  # in datasets/transform.py
+_C.TRAIN.AUGMIX = CN()
+_C.TRAIN.AUGMIX.OPS = "DefaultAugMix"
+_C.TRAIN.AUGMIX.RESIZE = "ResizeTransform"
 
 _C.TRAIN.METRIC = CN()
 _C.TRAIN.METRIC.NUM_CLASSES = 6    #选每个训练batch所选择的类别个数
@@ -76,6 +79,7 @@ _C.TRAIN.METRIC.NUM_SAMPLES = 6    #每个训练类别的样本个数，所以�
 _C.TRAIN.METRIC.OUTER_HARDSAMPLER = True      #是否启用类间困难样本筛选，原理是验证期间对所有训练集制作模板并类间交叉验证相似度，对每一个类别选择相似度最高的INSTANCES_NUM个实例组成一组，训练时随机选择这些困难实例组
 _C.TRAIN.METRIC.INTER_HARDSAMPLER = True      #是否启用类内困难样本筛选，原理是验证期间对所有训练集制作模板并类内交叉验证相似度，排除相似度高于阈值的同类实例
 _C.TRAIN.METRIC.INTER_HARDSAMPLER_THRED = 0.99  #类内相似度阈值，高于该相似度的被排除
+_C.TRAIN.METRIC.HARDSAMPLER_START_ITER = 10
 
 _C.TRAIN.APEX = False
 
@@ -103,6 +107,8 @@ _C.TEST.DATAPATH = ""       #指定测试集路径
 _C.TEST.OUTPATH = ""        #指定测试集输出路径，指定该路径后，会将测试集按模型结果输出到该路径下
 _C.TEST.METRIC = CN()
 _C.TEST.METRIC.TEMPLATE_PATH = ""
+_C.TEST.METRIC.TEMPLATE_DATAPATH = ""
+_C.TEST.METRIC.TEMPLATE_NAME = "tmp"
 
 
 # ---------------------------------------------------------------------------- #

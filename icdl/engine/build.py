@@ -11,6 +11,7 @@ def train_net(cfg):
         runner = ENFINE_REGISTRY.get('METRICTrainer')(cfg)
     runner()
 
+
 def test_net(cfg):
     if cfg.TEST.NAME:
         runner = ENFINE_REGISTRY.get(cfg.TEST.NAME)(cfg)
@@ -25,8 +26,8 @@ def build_runner(cfg, opt):
     elif opt == 'infer':
         test_net(cfg)
     elif opt == 'tmp':
-        ENFINE_REGISTRY.get(cfg.TEMPLATE.NAME)(cfg)
-    elif opt == 'jit' or opt == 'trt':
-        pass
+        ENFINE_REGISTRY.get(cfg.TEST.METRIC.TEMPLATE_NAME)(cfg)
+    elif opt == 'jit' or opt == 'onnx':
+        ENFINE_REGISTRY.get(opt)(cfg)
     else:
         print('无效操作，请检查opt参数')

@@ -1,44 +1,51 @@
 # retrieval settings
 MODEL:
-  TYPE: "cls"
-  ACTIVATE: "relu"
+  TYPE: "metric"
+  ACTIVATE: "mish"
   BACKBONE: "resnest50d"
-  WEIGHTS: ""
-  CLASSES: 403
-  METIRC:
+  WEIGHTS: "/media/cobot/4e4a7518-760a-46bb-a065-cbdcce966213/changshaTobacco/triplet/metric_resnest50_1_0707.pth"
+  CLASSES: 399
+  METRIC:
     DIM: 256
-    POOLING_LAYER: 'gem'
+    POOLING_LAYER: 'gempool'
 TRAIN:
-  DATASETS: ""
+  DATASETS: "/media/cobot/4e4a7518-760a-46bb-a065-cbdcce966213/changshaTobacco/triplet/dataset/0708/"
   NUM_WORKERS: 4
   INPUT_CHANNEL: 3
   INPUT_WIDTH: 320
   INPUT_HEIGHT: 320
-  TRANSFORM: "DefaultTransform"
+  TRANSFORM: "AugMixAugment"
+  AUGMIX:
+    OPS: "DefaultAugMix"
+    RESIZE: "ResizeTransform"
   METRIC:
     NUM_CLASSES: 6
-    NUM_SAMPLES: 6
+    NUM_SAMPLES: 5
     OUTER_HARDSAMPLER: True
     INTER_HARDSAMPLER: False
     INTER_HARDSAMPLER_THRED: 0.99
+    HARDSAMPLER_START_ITER: 4
 
 INFERENCE:
   TRANSFORM: "InferTransform"
 TEST:
-  DATAPATH: ""
+  DATAPATH: "/media/cobot/4e4a7518-760a-46bb-a065-cbdcce966213/changshaTobacco/triplet/dataset/0708/test/"
+  METRIC:
+    TEMPLATE_DATAPATH: "/media/cobot/4e4a7518-760a-46bb-a065-cbdcce966213/changshaTobacco/triplet/dataset/0708/template/"
+    TEMPLATE_PATH: ""
 SOLVER:
   OPTIMER: "sgd"
   LR_SCHEDULER_NAME: "WarmupCosineLR"
-  BASE_LR: 0.002
+  BASE_LR: 0.00002
   WEIGHT_DECAY: 0.0001
   MAX_ITER: 200
-  WARMUP_FACTOR: 0.001
+  WARMUP_MULTIPLIER: 50
   WARMUP_ITERS: 1000
 LOSS:
   NAME: "CircleLoss"
 OUTPUT:
-  DIR: ""
-  SAVE_SUFFIX: "0919"
+  DIR: "/media/cobot/4e4a7518-760a-46bb-a065-cbdcce966213/changshaTobacco/triplet/weight_out_icdl"
+  SAVE_SUFFIX: "icdl"
   SAVE_INTERVAL: 2
 GPUS:
   CUDA_VISIBLE_DEVICES: "'0'"

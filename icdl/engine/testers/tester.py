@@ -3,15 +3,16 @@ import shutil
 import torch
 from icdl.models.build_models import build_models
 
+
 class DefaultTester:
     def __init__(self, cfg):
         self.cfg = cfg
-        weight_path = cfg.MODEL.WEIGHT
+        weight_path = cfg.MODEL.WEIGHTS
         if weight_path.endswith('.pth'):
             self.model = build_models(cfg)
             self.model.load_state_dict(torch.load(cfg.MODEL.WEIGHTS, map_location='cpu'), strict=True)
         else:
-            self.model = torch.jit.load(cfg.MODEL.WEIGHT, map_location='cpu')
+            self.model = torch.jit.load(cfg.MODEL.WEIGHTS, map_location='cpu')
         self.model.eval().cuda()
 
         if self.cfg.TEST.OUTPATH:

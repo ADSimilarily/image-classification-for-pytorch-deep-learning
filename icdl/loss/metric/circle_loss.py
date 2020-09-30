@@ -3,11 +3,12 @@ import torch.nn as nn
 
 from ...utils import comm
 from ..registry import LOSSES_REGISTRY
+from ..semantic_agumentation import ISEALayer
 
 
 @LOSSES_REGISTRY.register()
 class CircleLoss(nn.Module):
-    def __init__(self, memory_size=1, scale=32, m=0.25):
+    def __init__(self, memory_size=1, isea=False, scale=32, m=0.25):
         super(CircleLoss, self).__init__()
         self.memory_size = memory_size
         self.scale = scale
@@ -20,6 +21,7 @@ class CircleLoss(nn.Module):
         self.memory = None
         self.labels = None
         self.template = {}
+        self.isea = ISEALayer(iter=1000, alpha=1.4142) if isea else None
 
     def getApproximateTemplate(self):
         return self.template
@@ -63,7 +65,11 @@ class CircleLoss(nn.Module):
             all_embedding = self.memory
             all_targets = self.labels
 
-        sim_mat = torch.matmul(embeddings, torch.t(all_embedding))
+        if self.isea:
+            noise_embeddings = self.isea(embeddings, labels)
+            sim_mat = torch.matmul(noise_embeddings, torch.t(all_embedding))
+        else:
+            sim_mat = torch.matmul(embeddings, torch.t(all_embedding))
 
         loss = torch.zeros(1, device=embeddings.device)
         #仅满足pos_min > neg_max条件

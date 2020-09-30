@@ -137,7 +137,7 @@ class SelectAdaptivePool2d(nn.Module):
             self.pool = AdaptiveCatAvgMaxPool2d(output_size)
         elif pool_type == 'max':
             self.pool = nn.AdaptiveMaxPool2d(output_size)
-        elif pool_type == 'gem':
+        elif pool_type == 'gempool':
             self.pool = GeneralizedMeanPoolingP(output_size=output_size)
         else:
             assert False, 'Invalid pool type: %s' % pool_type

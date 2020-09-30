@@ -1,4 +1,5 @@
 from .transform import *
+from .augMix import AugMixAugment
 from .registry import TRANSFORMS_REGISTRY
 from .folder_dataset import ImageFolder
 from .samplers import BalancedIdentitySampler
@@ -38,7 +39,12 @@ def build_train_dataloader(cfg):
         print("请指定正确的训练集路径：TRAIN.DATASETS")
         return None
 
-    train_transform = TRANSFORMS_REGISTRY.get(cfg.TRAIN.TRANSFORM)(cfg.TRAIN.INPUT_WIDTH, cfg.TRAIN.INPUT_HEIGHT)
+    if cfg.TRAIN.TRANSFORM == "AugMixAugment":
+        ops = TRANSFORMS_REGISTRY.get(cfg.TRAIN.AUGMIX.OPS)()
+        resize_trans = TRANSFORMS_REGISTRY.get(cfg.TRAIN.AUGMIX.RESIZE)(cfg.TRAIN.INPUT_WIDTH, cfg.TRAIN.INPUT_HEIGHT)
+        train_transform = TRANSFORMS_REGISTRY.get(cfg.TRAIN.TRANSFORM)(ops, resize_trans)
+    else:
+        train_transform = TRANSFORMS_REGISTRY.get(cfg.TRAIN.TRANSFORM)(cfg.TRAIN.INPUT_WIDTH, cfg.TRAIN.INPUT_HEIGHT)
 
     train_dataset = ImageFolder(train_floder, train_transform)
 
@@ -50,7 +56,8 @@ def build_train_dataloader(cfg):
             train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
         train_loader = dataloader(train_dataset, batch_size=cfg.TRAIN.INPUT_BATCH, shuffle=shuffle, sampler=train_sampler, num_workers=cfg.TRAIN.NUM_WORKERS, pin_memory=True, drop_last=True)
     else:
-        batch_samplers = BalancedIdentitySampler(train_dataset.targets, n_classes=cfg.TRAIN.METRIC.NUM_CLASSES, n_samples=cfg.TRAIN.METRIC.NUM_SAMPLES)
+        data_sampler = BalancedIdentitySampler(train_dataset.targets, n_classes=cfg.TRAIN.METRIC.NUM_CLASSES, n_samples=cfg.TRAIN.METRIC.NUM_SAMPLES)
+        batch_samplers = torch.utils.data.sampler.BatchSampler(data_sampler, cfg.TRAIN.METRIC.NUM_CLASSES * cfg.TRAIN.METRIC.NUM_SAMPLES, True)
         train_loader = torch.utils.data.DataLoader(train_dataset, batch_sampler=batch_samplers, num_workers=cfg.TRAIN.NUM_WORKERS, pin_memory=True)
 
     val_path = os.path.join(cfg.TRAIN.DATASETS, "val")

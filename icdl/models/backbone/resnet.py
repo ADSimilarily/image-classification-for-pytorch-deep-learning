@@ -13,7 +13,7 @@ import torch.nn.functional as F
 
 from .constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 from .helpers import build_model_with_cfg
-from icdl.models.layers import DropBlock2d, DropPath, AvgPool2dSame, BlurPool2d, create_attn, create_classifier
+from icdl.models.layers import DropBlock2d, DropPath, AvgPool2dSame, BlurPool2d, create_attn, create_classifier, ONNX, OnnxAvgPool2d
 from icdl.models.registry import register_model
 
 __all__ = ['ResNet', 'BasicBlock', 'Bottleneck']  # model_registry will add each entrypoint fn to this
@@ -371,8 +371,11 @@ def downsample_avg(
     if stride == 1 and dilation == 1:
         pool = nn.Identity()
     else:
-        avg_pool_fn = AvgPool2dSame if avg_stride == 1 and dilation > 1 else nn.AvgPool2d
-        pool = avg_pool_fn(2, avg_stride, ceil_mode=True, count_include_pad=False)
+        if ONNX.use_onnx():
+            pool = OnnxAvgPool2d(in_channels, 2, avg_stride, 0)
+        else:
+            avg_pool_fn = AvgPool2dSame if avg_stride == 1 and dilation > 1 else nn.AvgPool2d
+            pool = avg_pool_fn(2, avg_stride, ceil_mode=True, count_include_pad=False)
 
     return nn.Sequential(*[
         pool,

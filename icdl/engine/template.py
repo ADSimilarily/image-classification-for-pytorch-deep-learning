@@ -1,7 +1,7 @@
 import torch
 from icdl.models.build_models import build_models
 from icdl.datasets.build import create_infer_dataloader
-from icdl.engine.registry import ENFINE_REGISTRY
+from .registry import ENFINE_REGISTRY
 from icdl.datasets.registry import TRANSFORMS_REGISTRY
 from icdl.datasets.folder_dataset import ImageFolder
 import os
@@ -11,17 +11,17 @@ from tqdm import tqdm
 @ENFINE_REGISTRY.register()
 def tmp(cfg):
 
-    weight_path = cfg.MODEL.WEIGHTS
+    weight_path = cfg.MODEL.WEIGHT
     if weight_path.endswith('.pth'):
         model = build_models(cfg)
-        model.load_state_dict(torch.load(cfg.MODEL.WEIGHTS, map_location='cpu'), strict=True)
+        model.load_state_dict(torch.load(cfg.MODEL.WEIGHT, map_location='cpu'), strict=True)
     else:
-        model = torch.jit.load(cfg.MODEL.WEIGHTS, map_location='cpu')
+        model = torch.jit.load(cfg.MODEL.WEIGHT, map_location='cpu')
     model.eval().cuda()
 
-    floder = cfg.TEST.METRIC.TEMPLATE_DATAPATH
-    if not cfg.TEST.METRIC.TEMPLATE_DATAPATH or not os.path.exists(floder):
-        print("请指定正确的数据集路径：TEMPLATE_DATAPATH")
+    floder = cfg.TEMPLATE.DATAPATH
+    if not cfg.TEMPLATE.DATAPATH or not os.path.exists(floder):
+        print("请指定正确的数据集路径：TEMPLATE.DATASETS")
         return None
 
     dataloader = create_infer_dataloader(floder, cfg)
@@ -29,7 +29,7 @@ def tmp(cfg):
     labels = None
     features = None
     features_template = {}
-    for image, target in tqdm(dataloader):
+    for image, target, _ in tqdm(dataloader):
         with torch.no_grad():
             feature = model(image.cuda())
 
@@ -54,7 +54,7 @@ def tmp(cfg):
 
         features_template[k] = feature
 
-    torch.save(features_template, os.path.join(cfg.OUTPUT.DIR, os.path.basename(cfg.MODEL.WEIGHTS).split('.')[0] + '_features_template.pth'))
+    torch.save(features_template, os.path.join(cfg.OUTPUT.DIR, os.path.basename(cfg.MODEL.WEIGHT).split('.')[0] + '_features_template.pth'))
 
 
 
@@ -102,24 +102,24 @@ def cluster(features, threshold = 0.98):
 
 @ENFINE_REGISTRY.register()
 def cluster_tmp(cfg):
-    weight_path = cfg.MODEL.WEIGHTS
+    weight_path = cfg.MODEL.WEIGHT
     if weight_path.endswith('.pth'):
         model = build_models(cfg)
-        model.load_state_dict(torch.load(cfg.MODEL.WEIGHTS, map_location='cpu'), strict=True)
+        model.load_state_dict(torch.load(cfg.MODEL.WEIGHT, map_location='cpu'), strict=True)
     else:
-        model = torch.jit.load(cfg.MODEL.WEIGHTS, map_location='cpu')
+        model = torch.jit.load(cfg.MODEL.WEIGHT, map_location='cpu')
     model.eval().cuda()
 
-    floder = cfg.TEST.METRIC.TEMPLATE_DATAPATH
-    if not cfg.TEST.METRIC.TEMPLATE_DATAPATH or not os.path.exists(floder):
-        print("请指定正确的数据集路径：TEMPLATE_DATAPATH")
+    floder = cfg.TEMPLATE.DATAPATH
+    if not cfg.TEMPLATE.DATAPATH or not os.path.exists(floder):
+        print("请指定正确的数据集路径：TEMPLATE.DATASETS")
         return None
 
     transform = TRANSFORMS_REGISTRY.get(cfg.INFERENCE.TRANSFORM)(cfg.TRAIN.INPUT_WIDTH, cfg.TRAIN.INPUT_HEIGHT)
     dataset = ImageFolder(floder, transform)
 
     cluster_map = {}
-    for image, target in tqdm(dataset):
+    for image, target, _ in tqdm(dataset):
         target = dataset.classes[target]
         with torch.no_grad():
             features = model(image.unsqueeze(dim=0).cuda())
@@ -143,24 +143,24 @@ def cluster_tmp(cfg):
 
     features_template['features'] = features_template['features'][1:]
     print(features_template['features'].shape)
-    torch.save(features_template, os.path.join(cfg.OUTPUT.DIR, os.path.basename(cfg.MODEL.WEIGHTS).split('.')[0] + '_features_template.pth'))
+    torch.save(features_template, os.path.join(cfg.OUTPUT.DIR, os.path.basename(cfg.MODEL.WEIGHT).split('.')[0] + '_features_template.pth'))
 
 
 #=======================================对每一个实例做模板===================================
-@ENFINE_REGISTRY.register
+@ENFINE_REGISTRY.register()
 def instance_tmp(cfg):
 
-    weight_path = cfg.MODEL.WEIGHTS
+    weight_path = cfg.MODEL.WEIGHT
     if weight_path.endswith('.pth'):
         model = build_models(cfg)
-        model.load_state_dict(torch.load(cfg.MODEL.WEIGHTS, map_location='cpu'), strict=True)
+        model.load_state_dict(torch.load(cfg.MODEL.WEIGHT, map_location='cpu'), strict=True)
     else:
-        model = torch.jit.load(cfg.MODEL.WEIGHTS, map_location='cpu')
+        model = torch.jit.load(cfg.MODEL.WEIGHT, map_location='cpu')
     model.eval().cuda()
 
-    floder = cfg.TEST.METRIC.TEMPLATE_DATAPATH
-    if not cfg.TEST.METRIC.TEMPLATE_DATAPATH or not os.path.exists(floder):
-        print("请指定正确的数据集路径：TEMPLATE_DATAPATH")
+    floder = cfg.TEMPLATE.DATAPATH
+    if not cfg.TEMPLATE.DATAPATH or not os.path.exists(floder):
+        print("请指定正确的数据集路径：TEMPLATE.DATASETS")
         return None
 
     transform = TRANSFORMS_REGISTRY.get(cfg.INFERENCE.TRANSFORM)(cfg.TRAIN.INPUT_WIDTH, cfg.TRAIN.INPUT_HEIGHT)
@@ -168,8 +168,9 @@ def instance_tmp(cfg):
 
     features_template = {}
     features_template['labels'] = []
+    features_template['paths'] = []
     features_template['features'] = torch.zeros((1, cfg.MODEL.METRIC.DIM)).cuda()
-    for image, target in tqdm(dataset):
+    for image, target, path in tqdm(dataset):
         target = dataset.classes[target]
         with torch.no_grad():
             features = model(image.unsqueeze(dim=0).cuda())
@@ -179,8 +180,9 @@ def instance_tmp(cfg):
 
         if (sorted_simi[0, 0].cpu().item() < 0.99):
             features_template['labels'].append(target)
+            features_template['paths'].append(path)
             features_template['features'] = torch.cat((features_template['features'], features), dim=0)
 
     features_template['features'] = features_template['features'][1:]
     print(features_template['features'].shape)
-    torch.save(features_template, os.path.join(cfg.OUTPUT.DIR, os.path.basename(cfg.MODEL.WEIGHTS).split('.')[0] + '_features_template.pth'))
+    torch.save(features_template, os.path.join(cfg.OUTPUT.DIR, os.path.basename(cfg.MODEL.WEIGHT).split('.')[0] + '_features_template.pth'))

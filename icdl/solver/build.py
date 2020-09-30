@@ -3,7 +3,7 @@ from typing import Any, Dict, List
 import torch
 from yacs.config import CfgNode
 
-from .lr_scheduler import WarmupCosineLR, WarmupMultiStepLR, WarmupPloyLR
+from .lr_scheduler import WarmupCosineLR, WarmupMultiStepLR, WarmupPloyLR, GradualWarmupScheduler
 
 
 def build_optimer(cfg: CfgNode, model: torch.nn.Module) -> torch.optim.Optimizer:
@@ -38,33 +38,31 @@ def build_lr_scheduler(
     """
     Build a LR scheduler from config.
     """
-    max_iters = cfg.SOLVER.MAX_ITER * dataset_size // cfg.TRAIN.INPUT_BATCH
+
+    batch_size = cfg.TRAIN.INPUT_BATCH
+    if cfg.MODEL.TYPE == "metric":
+        batch_size = cfg.TRAIN.METRIC.NUM_CLASSES * cfg.TRAIN.METRIC.NUM_SAMPLES
+    max_iters = cfg.SOLVER.MAX_ITER * dataset_size // batch_size
 
     name = cfg.SOLVER.LR_SCHEDULER_NAME
     if name == "WarmupMultiStepLR":
-        return WarmupMultiStepLR(
+        after_scheduler = WarmupMultiStepLR(
             optimizer,
             cfg.SOLVER.STEPS,
             cfg.SOLVER.GAMMA,
-            warmup_factor=cfg.SOLVER.WARMUP_FACTOR,
-            warmup_iters=cfg.SOLVER.WARMUP_ITERS,
-            warmup_method=cfg.SOLVER.WARMUP_METHOD,
         )
     elif name == "WarmupCosineLR":
-        return WarmupCosineLR(
+        after_scheduler = WarmupCosineLR(
             optimizer,
             max_iters,
-            warmup_factor=cfg.SOLVER.WARMUP_FACTOR,
-            warmup_iters=cfg.SOLVER.WARMUP_ITERS,
-            warmup_method=cfg.SOLVER.WARMUP_METHOD,
         )
     elif name == "WarmupPloyLR":
-        return WarmupPloyLR(
+        after_scheduler = WarmupPloyLR(
             optimizer,
             max_iters,
-            warmup_factor=cfg.SOLVER.WARMUP_FACTOR,
-            warmup_iters=cfg.SOLVER.WARMUP_ITERS,
-            warmup_method=cfg.SOLVER.WARMUP_METHOD,
         )
     else:
         raise ValueError("Unknown LR scheduler: {}".format(name))
+
+    return GradualWarmupScheduler(optimizer, multiplier=cfg.SOLVER.WARMUP_MULTIPLIER,
+                                          total_epoch=cfg.SOLVER.WARMUP_ITERS, after_scheduler=after_scheduler)

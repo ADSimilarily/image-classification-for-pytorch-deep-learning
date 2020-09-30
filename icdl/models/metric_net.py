@@ -16,8 +16,8 @@ class MetricNet(nn.Module):
         self.embedding_num = cfg.MODEL.METRIC.DIM
         self.backbone = build_backbone(cfg)
 
-        if cfg.MODEL.METRIC.BACKBONE_WEIGHT:
-            pretrained_dict = torch.load(cfg.MODEL.METRIC.BACKBONE_WEIGHT, map_location='cpu')
+        if cfg.MODEL.BACKBONE_WEIGHTS:
+            pretrained_dict = torch.load(cfg.MODEL.BACKBONE_WEIGHTS, map_location='cpu')
             load_weight_without_strict(self.backbone, pretrained_dict)
 
         self.pool_layer = SelectAdaptivePool2d(pool_type=cfg.MODEL.METRIC.POOLING_LAYER, flatten=False)
@@ -26,9 +26,10 @@ class MetricNet(nn.Module):
         norm_layer = cfg.MODEL.METRIC.NORM_LAYER
         if gpus > 1 and norm_layer not in ['SyncBN', 'nnSyncBN', 'naiveSyncBN']:
             norm_layer = 'SyncBN'
-        self.batch_norm = get_norm(norm_layer)
-        self.relu = get_act_layer(cfg.MODEL.METRIC.ACTIVATE)
-        self.linear = nn.Linear(self.backbone.classifier.in_features, self.embedding_num)
+        classifier = self.backbone.get_classifier()
+        self.batch_norm = get_norm(norm_layer)(classifier.in_features)
+        self.relu = get_act_layer(cfg.MODEL.ACTIVATE)(inplace=True)
+        self.linear = nn.Linear(classifier.in_features, self.embedding_num)
 
     def forward(self, inputs: torch.Tensor) -> torch.Tensor:
         features = self.backbone.forward_features(inputs)

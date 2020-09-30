@@ -30,3 +30,4 @@ from .split_attn import SplitAttnConv2d
 from .split_batchnorm import SplitBatchNorm2d, convert_splitbn_model
 from .test_time_pool import TestTimePoolHead, apply_test_time_pool
 from .weight_init import trunc_normal_
+from .onnx import *

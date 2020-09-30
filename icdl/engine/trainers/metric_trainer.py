@@ -127,7 +127,7 @@ class METRICTrainer(DefaultTrainer):
             for i in range(sim_mat.shape[0]):
                 sim = sim_mat[i]
                 sim, index = torch.sort(sim, dim=0, descending=True)
-                hard_index = index[0:self.cfg.TRAIN.METRIC.INSTANCES_NUM]
+                hard_index = index[0:self.cfg.TRAIN.METRIC.NUM_CLASSES]
                 HardSampler.insertSampler(i, hard_index.cpu().numpy())
                 sec_sim += sim[1].item()
 

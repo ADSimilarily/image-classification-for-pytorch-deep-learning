@@ -22,6 +22,10 @@ class MSOptimLoss(nn.Module):
         self.memory_size = memory_size
         self.memory = None
         self.labels = None
+        self.template = {}
+
+    def getApproximateTemplate(self):
+        return self.template
 
     def forward(self, embeddings, labels):
         assert embeddings.size(0) == labels.size(0), \
@@ -34,6 +38,16 @@ class MSOptimLoss(nn.Module):
         else:
             all_embedding = embeddings
             all_targets = labels
+
+        # 计算近似模板
+        targets_set = set(all_targets.cpu().numpy())
+        for target in targets_set:
+            pos = all_targets == target
+            target_embeddings = all_embedding[pos]
+            mean_embedding = target_embeddings.mean(dim=0)
+            denom = mean_embedding.norm(2, 0, True).clamp_min(1e-12)
+            mean_embedding = mean_embedding / denom
+            self.template[target] = mean_embedding.unsqueeze(dim=0)
 
         if self.memory_size > all_embedding.shape[0]:
             if self.memory is None:
